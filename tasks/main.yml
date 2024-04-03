@@ -1,0 +1,42 @@
+---
+- name: Install dependencies for HA-Proxy
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - iptables
+    
+- name: Ensure HA-Proxy is installed.
+  package: 
+    name: haproxy{{ haproxy_version }}
+    state: present
+
+- name: Get HAProxy version.
+  command: haproxy -v
+  register: haproxy_version_result
+  changed_when: false
+  check_mode: false
+
+- name: Debug version of HAProxy
+  debug:
+    msg: "{{ haproxy_version_result.stdout }}"
+
+- name: Configure sysctl.conf enable parameter net.ipv4
+  block:
+    - ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: true
+        reload: true
+    - ansible.posix.sysctl:
+        name: net.ipv4.ip_nonlocal_bind
+        value: '1'
+        sysctl_set: true
+        reload: true
+
+- name: Ensure HAProxy is started and enabled on boot.
+  service: 
+    name: haproxy 
+    state: started 
+    enabled: yes
+
